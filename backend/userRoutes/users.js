@@ -1,27 +1,24 @@
 import express from "express";
 
-// import { } from
-
 import {
   getUsers,
   createUser,
   singleUser,
   deleteUser,
   updateUser,
+  getUserStats,
 } from "../controllers/user.js";
 
 const router = express.Router();
 
+// User CRUD routes
 router.get("/users", getUsers);
-
 router.post("/user", createUser);
-
 router.get("/user/:id", singleUser);
-
-router.delete("/user/:id", deleteUser);
-//for user updatedtion
-
 router.put("/user/:id", updateUser);
+router.delete("/user/:id", deleteUser);
 
-// router.get("/user:id", deleteUser);
+// Additional routes for future features (Issue #3)
+router.get("/stats/users", getUserStats);
+
 export default router;

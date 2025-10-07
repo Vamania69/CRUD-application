@@ -12,18 +12,31 @@ function Home() {
 
   //we define the api call getuser to get the user data
   const getUser = async () => {
-    const response = await axios.get("http://localhost:5000/users");
-    if (response.status === 200) {
-      setData(response.data);
-    } else console.log("There is some issue in fething the data");
+    try {
+      const response = await axios.get("http://localhost:5000/api/users");
+      if (response.status === 200 && response.data.success) {
+        setData(response.data.data);
+      } else {
+        console.log("There is some issue in fetching the data");
+        toast.error("Failed to fetch users");
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users");
+    }
   };
 
   const deleteUser = async (id) => {
-    if (window.confirm) {
-      const response = await axios.delete(`http://localhost:5000/user/${id}`);
-      if (response.status === 200) {
-        toast.success("User Deleted Sucessfully");
-        getUser();
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        const response = await axios.delete(`http://localhost:5000/api/user/${id}`);
+        if (response.status === 200 && response.data.success) {
+          toast.success(response.data.message || "User Deleted Successfully");
+          getUser();
+        }
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        toast.error("Failed to delete user");
       }
     }
   };
@@ -50,12 +63,9 @@ function Home() {
             </tr>
           </thead>
           <tbody>
-            {data.map((user, key) => {
-              {
-                key = user.id;
-              }
+            {data.map((user) => {
               return (
-                <tr className="bg-white border-b dark:bg-gray-900 dark:border-gray-700">
+                <tr key={user._id} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700">
                   <th
                     scope="row"
                     className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
@@ -66,7 +76,7 @@ function Home() {
                   <td className="px-6 py-4">{user.Contact}</td>
                   <td className="px-6 py-4">
                     <Link
-                      to={`/editUser/${user.id}`}
+                      to={`/editUser/${user._id}`}
                       className="font-medium text-blue-600 dark:text-blue-500 hover:underline"
                     >
                       Edit
@@ -74,13 +84,13 @@ function Home() {
 
                     <Link
                       to="/"
-                      onClick={() => deleteUser(user.id)}
+                      onClick={() => deleteUser(user._id)}
                       className=" px-6 py-4 font-medium text-blue-600 dark:text-blue-500 hover:underline"
                     >
                       Delete
                     </Link>
                     <Link
-                      to={`/ViewUser/${user.id}`}
+                      to={`/ViewUser/${user._id}`}
                       className=" px-6 py-4 font-medium text-blue-600 dark:text-blue-500 hover:underline"
                     >
                       ViewUser

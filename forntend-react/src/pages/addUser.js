@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 // import useHistory from "react-router-dom";
 
 // const history = useHistory();
@@ -31,38 +31,61 @@ function AddUser() {
 
   //add user with details
   const addUser = async (data) => {
-    const response = await axios.post("http://localhost:5000/user", user);
-    if (response.status === 200) {
-      console.log(response.data);
-      toast.success(response.data);
+    try {
+      const response = await axios.post("http://localhost:5000/api/user", user);
+      if (response.status === 201 && response.data.success) {
+        console.log(response.data);
+        toast.success(response.data.message || "User Added Successfully");
+      }
+    } catch (error) {
+      console.error("Error adding user:", error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to add user");
+      }
     }
   };
 
   //updating user
-
   const updateUser = async (updatedData, id) => {
-    const response = await axios.put(
-      `http://localhost:5000/user/${id}`,
-      updatedData
-    );
-    if (response.status === 200) {
-      toast.success("User Updated sucessfullY");
+    try {
+      const response = await axios.put(
+        `http://localhost:5000/api/user/${id}`,
+        updatedData
+      );
+      if (response.status === 200 && response.data.success) {
+        toast.success(response.data.message || "User Updated Successfully");
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to update user");
+      }
     }
   };
 
   const { id } = useParams();
-  useEffect(() => {
-    getSingleUser();
-  }, [id]);
-
-  const getSingleUser = async () => {
+  
+  const getSingleUser = useCallback(async () => {
     if (id) {
-      const response = await axios.get(`http://localhost:5000/user/${id}`);
-      if (response.status === 200) {
-        setUser({ ...response.data[0] });
+      try {
+        const response = await axios.get(`http://localhost:5000/api/user/${id}`);
+        if (response.status === 200 && response.data.success) {
+          setUser({ ...response.data.data });
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        toast.error("Failed to fetch user details");
       }
     }
-  };
+  }, [id]);
+  
+  useEffect(() => {
+    getSingleUser();
+  }, [getSingleUser]);
   return (
     <div className="flex flex-col justify-center items-center">
       <h2 className="my-5 text-center text-2xl ">Add users </h2>
