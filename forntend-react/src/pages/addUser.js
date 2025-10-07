@@ -5,6 +5,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  UserPlusIcon, 
+  PencilIcon, 
+  ArrowLeftIcon,
+  UserIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon 
+} from "@heroicons/react/24/outline";
+import { useTheme } from "../context/ThemeContext";
 
 // Validation schema
 const userSchema = yup.object().shape({
@@ -33,6 +45,7 @@ function AddUser() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(!!id);
+  const { isDarkMode } = useTheme();
 
   const {
     register,
@@ -147,154 +160,222 @@ function AddUser() {
   // Loading state for fetching user data
   if (isLoadingUser) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-        <p className="mt-4 text-gray-600">Loading user data...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className={`inline-block w-8 h-8 border-4 border-t-transparent rounded-full ${isDarkMode ? 'border-blue-400' : 'border-blue-600'}`}
+          />
+          <p className={`mt-4 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Loading user data...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="w-full max-w-md">
-        <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
-          {id ? "Edit User" : "Add New User"}
-        </h2>
+  const InputField = ({ label, name, type = "text", placeholder, icon: Icon }) => {
+    const hasError = errors[name];
+    const hasValue = watchedFields[name];
+    const isValid = hasValue && !hasError;
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="bg-white dark:bg-gray-800 shadow-lg rounded-lg px-8 pt-6 pb-8 mb-4"
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <label
+          htmlFor={name}
+          className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
         >
-          {/* Name Field */}
-          <div className="mb-6">
-            <label
-              htmlFor="Name"
-              className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-            >
-              Full Name *
-            </label>
-            <input
-              {...register("Name")}
-              type="text"
-              id="Name"
-              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
-                errors.Name
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-gray-300 focus:border-blue-500"
-              }`}
+          {label} *
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Icon className={`h-5 w-5 ${hasError ? 'text-red-400' : isValid ? 'text-green-400' : isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+          </div>
+          <input
+            {...register(name)}
+            type={type}
+            id={name}
+            placeholder={placeholder}
+            className={`block w-full pl-10 pr-3 py-3 border rounded-lg transition-all duration-200 ${
+              hasError
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                : isValid
+                ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                : isDarkMode
+                ? 'border-gray-600 focus:border-blue-500 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400'
+                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500'
+            } focus:ring-2 focus:ring-opacity-50`}
+          />
+          {isValid && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <CheckCircleIcon className="h-5 w-5 text-green-400" />
+            </div>
+          )}
+        </div>
+        {hasError && (
+          <motion.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mt-2 text-sm text-red-600 flex items-center"
+          >
+            <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+            {errors[name].message}
+          </motion.p>
+        )}
+        {isValid && (
+          <motion.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mt-2 text-sm text-green-600 flex items-center"
+          >
+            <CheckCircleIcon className="h-4 w-4 mr-1" />
+            Looks good!
+          </motion.p>
+        )}
+      </motion.div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen p-6">
+      <div className="max-w-2xl mx-auto space-y-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+            {id ? (
+              <PencilIcon className={`h-8 w-8 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            ) : (
+              <UserPlusIcon className={`h-8 w-8 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            )}
+          </div>
+          <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            {id ? "Edit User" : "Add New User"}
+          </h1>
+          <p className={`mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            {id ? "Update the user information below" : "Fill in the details to create a new user"}
+          </p>
+        </motion.div>
+
+        {/* Form Container */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-8 border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} shadow-xl`}
+        >
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <InputField
+              label="Full Name"
+              name="Name"
               placeholder="Enter your full name"
+              icon={UserIcon}
             />
-            {errors.Name && (
-              <p className="text-red-500 text-xs italic mt-1">
-                {errors.Name.message}
-              </p>
-            )}
-            {watchedFields.Name && !errors.Name && (
-              <p className="text-green-500 text-xs italic mt-1">✓ Looks good!</p>
-            )}
-          </div>
 
-          {/* Email Field */}
-          <div className="mb-6">
-            <label
-              htmlFor="Email"
-              className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-            >
-              Email Address *
-            </label>
-            <input
-              {...register("Email")}
+            <InputField
+              label="Email Address"
+              name="Email"
               type="email"
-              id="Email"
-              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
-                errors.Email
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-gray-300 focus:border-blue-500"
-              }`}
               placeholder="Enter your email address"
+              icon={EnvelopeIcon}
             />
-            {errors.Email && (
-              <p className="text-red-500 text-xs italic mt-1">
-                {errors.Email.message}
-              </p>
-            )}
-            {watchedFields.Email && !errors.Email && (
-              <p className="text-green-500 text-xs italic mt-1">✓ Valid email!</p>
-            )}
-          </div>
 
-          {/* Contact Field */}
-          <div className="mb-6">
-            <label
-              htmlFor="Contact"
-              className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-            >
-              Contact Number *
-            </label>
-            <input
-              {...register("Contact")}
+            <InputField
+              label="Contact Number"
+              name="Contact"
               type="tel"
-              id="Contact"
-              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
-                errors.Contact
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-gray-300 focus:border-blue-500"
-              }`}
               placeholder="Enter your contact number"
+              icon={PhoneIcon}
             />
-            {errors.Contact && (
-              <p className="text-red-500 text-xs italic mt-1">
-                {errors.Contact.message}
-              </p>
-            )}
-            {watchedFields.Contact && !errors.Contact && (
-              <p className="text-green-500 text-xs italic mt-1">✓ Valid contact!</p>
-            )}
-          </div>
 
-          {/* Submit Button */}
-          <div className="flex items-center justify-between">
-            <button
-              type="submit"
-              disabled={isLoading || isSubmitting || !isDirty || !isValid}
-              className={`font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-all duration-200 ${
-                isLoading || isSubmitting || !isDirty || !isValid
-                  ? "bg-gray-400 cursor-not-allowed text-gray-700"
-                  : "bg-blue-500 hover:bg-blue-700 text-white"
-              }`}
+            {/* Form Actions */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700"
             >
-              {isLoading || isSubmitting ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {id ? "Updating..." : "Adding..."}
-                </div>
-              ) : (
-                <>{id ? "Update User" : "Add User"}</>
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className={`inline-flex items-center px-6 py-3 border rounded-lg font-medium transition-all duration-200 ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+              >
+                <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                Back to Users
+              </button>
+
+              <button
+                type="submit"
+                disabled={isLoading || isSubmitting || !isDirty || !isValid}
+                className={`inline-flex items-center px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  isLoading || isSubmitting || !isDirty || !isValid
+                    ? "bg-gray-400 cursor-not-allowed text-gray-700"
+                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl"
+                }`}
+              >
+                {isLoading || isSubmitting ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
+                    />
+                    {id ? "Updating..." : "Adding..."}
+                  </>
+                ) : (
+                  <>
+                    {id ? (
+                      <PencilIcon className="h-5 w-5 mr-2" />
+                    ) : (
+                      <UserPlusIcon className="h-5 w-5 mr-2" />
+                    )}
+                    {id ? "Update User" : "Add User"}
+                  </>
+                )}
+              </button>
+            </motion.div>
+
+            {/* Form Status */}
+            <AnimatePresence>
+              {!isDirty && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className={`text-sm text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                >
+                  Please fill in the form to enable submission.
+                </motion.div>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-all duration-200"
-            >
-              Cancel
-            </button>
-          </div>
-
-          {/* Form Status */}
-          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            {!isDirty && (
-              <p>Please fill in the form to enable submission.</p>
-            )}
-            {isDirty && !isValid && (
-              <p className="text-red-500">Please fix the errors above.</p>
-            )}
-            {isDirty && isValid && (
-              <p className="text-green-500">Form is ready to submit!</p>
-            )}
-          </div>
-        </form>
+              {isDirty && !isValid && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-sm text-center text-red-500 flex items-center justify-center"
+                >
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  Please fix the errors above.
+                </motion.div>
+              )}
+              {isDirty && isValid && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-sm text-center text-green-500 flex items-center justify-center"
+                >
+                  <CheckCircleIcon className="h-4 w-4 mr-1" />
+                  Form is ready to submit!
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </form>
+        </motion.div>
       </div>
     </div>
   );
