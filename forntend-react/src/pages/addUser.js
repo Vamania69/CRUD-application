@@ -1,45 +1,116 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { useParams } from "react-router-dom";
-// import useHistory from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
-// const history = useHistory();
-const initalstate = {
-  Name: "",
-  Email: "",
-  Contact: "",
-};
+// Validation schema
+const userSchema = yup.object().shape({
+  Name: yup
+    .string()
+    .required("Name is required")
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name cannot exceed 50 characters")
+    .matches(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces"),
+  Email: yup
+    .string()
+    .required("Email is required")
+    .email("Please enter a valid email address")
+    .max(100, "Email cannot exceed 100 characters"),
+  Contact: yup
+    .string()
+    .required("Contact number is required")
+    .matches(
+      /^[+]?[\d\-()s]{10,20}$/,
+      "Please enter a valid contact number (10-20 digits)"
+    ),
+});
 
 function AddUser() {
-  //   const history = useHistory();
-  const [user, setUser] = useState(initalstate);
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!id) {
-      addUser();
-    } else {
-      updateUser(user, id);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUser, setIsLoadingUser] = useState(!!id);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isDirty, isValid },
+    reset,
+    setValue,
+    watch,
+  } = useForm({
+    resolver: yupResolver(userSchema),
+    mode: "onChange", // Validate on change for real-time feedback
+    defaultValues: {
+      Name: "",
+      Email: "",
+      Contact: "",
+    },
+  });
+
+  // Watch for real-time validation feedback
+  const watchedFields = watch();
+
+  // Fetch user data for editing
+  const getSingleUser = useCallback(async () => {
+    if (id) {
+      setIsLoadingUser(true);
+      try {
+        const response = await axios.get(`http://localhost:5000/api/user/${id}`);
+        if (response.status === 200 && response.data.success) {
+          const userData = response.data.data;
+          setValue("Name", userData.Name);
+          setValue("Email", userData.Email);
+          setValue("Contact", userData.Contact);
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        toast.error("Failed to fetch user details");
+        navigate("/"); // Redirect to home if user not found
+      } finally {
+        setIsLoadingUser(false);
+      }
+    }
+  }, [id, setValue, navigate]);
+
+  useEffect(() => {
+    getSingleUser();
+  }, [getSingleUser]);
+
+  // Submit handler
+  const onSubmit = async (data) => {
+    setIsLoading(true);
+    try {
+      if (!id) {
+        await addUser(data);
+      } else {
+        await updateUser(data, id);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleValue = (e) => {
-    e.preventDefault();
-    let { name, value } = e.target;
-    setUser({ ...user, [name]: value });
-  };
-
-  //add user with details
+  // Add user
   const addUser = async (data) => {
     try {
-      const response = await axios.post("http://localhost:5000/api/user", user);
+      const response = await axios.post("http://localhost:5000/api/user", data);
       if (response.status === 201 && response.data.success) {
-        console.log(response.data);
         toast.success(response.data.message || "User Added Successfully");
+        reset(); // Reset form after successful submission
+        navigate("/"); // Redirect to home page
       }
     } catch (error) {
       console.error("Error adding user:", error);
-      if (error.response?.data?.message) {
+      if (error.response?.data?.errors) {
+        // Handle validation errors from backend
+        error.response.data.errors.forEach((err) => {
+          toast.error(`${err.field}: ${err.message}`);
+        });
+      } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
         toast.error("Failed to add user");
@@ -47,19 +118,25 @@ function AddUser() {
     }
   };
 
-  //updating user
-  const updateUser = async (updatedData, id) => {
+  // Update user
+  const updateUser = async (data, id) => {
     try {
       const response = await axios.put(
         `http://localhost:5000/api/user/${id}`,
-        updatedData
+        data
       );
       if (response.status === 200 && response.data.success) {
         toast.success(response.data.message || "User Updated Successfully");
+        navigate("/"); // Redirect to home page
       }
     } catch (error) {
       console.error("Error updating user:", error);
-      if (error.response?.data?.message) {
+      if (error.response?.data?.errors) {
+        // Handle validation errors from backend
+        error.response.data.errors.forEach((err) => {
+          toast.error(`${err.field}: ${err.message}`);
+        });
+      } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
         toast.error("Failed to update user");
@@ -67,118 +144,158 @@ function AddUser() {
     }
   };
 
-  const { id } = useParams();
-  
-  const getSingleUser = useCallback(async () => {
-    if (id) {
-      try {
-        const response = await axios.get(`http://localhost:5000/api/user/${id}`);
-        if (response.status === 200 && response.data.success) {
-          setUser({ ...response.data.data });
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        toast.error("Failed to fetch user details");
-      }
-    }
-  }, [id]);
-  
-  useEffect(() => {
-    getSingleUser();
-  }, [getSingleUser]);
+  // Loading state for fetching user data
+  if (isLoadingUser) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+        <p className="mt-4 text-gray-600">Loading user data...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col justify-center items-center">
-      <h2 className="my-5 text-center text-2xl ">Add users </h2>
+    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+      <div className="w-full max-w-md">
+        <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
+          {id ? "Edit User" : "Add New User"}
+        </h2>
 
-      <form
-        className="dark:bg-gray-900 my-5 w-1/2 text-lg p-8 rounded-md"
-        onSubmit={handleSubmit}
-      >
-        <div className="mb-6">
-          <label
-            for="username"
-            className="block mb-2  font-medium text-gray-800 dark:text-white"
-          >
-            User Name
-          </label>
-          <input
-            onChange={handleValue}
-            type="name"
-            value={user.Name}
-            id="username"
-            name="Name"
-            className="bg-gray-50 border border-gray-300 text-gray-900  rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            placeholder="username"
-            required
-          />
-
-          <label
-            for="email"
-            className="block mb-2  font-medium text-gray-900 dark:text-white"
-          >
-            Email
-          </label>
-          <input
-            value={user.Email}
-            type="email"
-            name="Email"
-            id="email"
-            onChange={handleValue}
-            placeholder="email"
-            className="bg-gray-50 border
-            border-gray-300 text-gray-900  rounded-lg
-            focus:ring-blue-500 focus:border-blue-500 block w-full
-                p-2.5 dark:bg-gray-700 dark:border-gray-600
-                dark:placeholder-gray-400 dark:text-white
-                dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            required
-          />
-          <label
-            for="contact"
-            className="block mb-2  font-medium text-gray-900 dark:text-white"
-          >
-            Your contact
-          </label>
-          <input
-            type="contact"
-            value={user.Contact}
-            name="Contact"
-            placeholder="contact"
-            id="contact"
-            onChange={handleValue}
-            className="bg-gray-50 border
-            border-gray-300 text-gray-900 text-sm rounded-lg
-            focus:ring-blue-500 focus:border-blue-500 block w-full
-                p-2.5 dark:bg-gray-700 dark:border-gray-600
-                dark:placeholder-gray-400 dark:text-white
-                dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            required
-          />
-        </div>
-        <div className="flex items-start mb-6">
-          <div className="flex items-center h-5">
-            <input
-              id="remember"
-              type="checkbox"
-              value=""
-              className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800"
-              required
-            />
-          </div>
-          <label
-            for="remember"
-            className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-          >
-            Remember me
-          </label>
-        </div>
-        <button
-          type="submit"
-          className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="bg-white dark:bg-gray-800 shadow-lg rounded-lg px-8 pt-6 pb-8 mb-4"
         >
-          {id ? "Update" : "Submit"}
-        </button>
-      </form>
+          {/* Name Field */}
+          <div className="mb-6">
+            <label
+              htmlFor="Name"
+              className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+            >
+              Full Name *
+            </label>
+            <input
+              {...register("Name")}
+              type="text"
+              id="Name"
+              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
+                errors.Name
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-gray-300 focus:border-blue-500"
+              }`}
+              placeholder="Enter your full name"
+            />
+            {errors.Name && (
+              <p className="text-red-500 text-xs italic mt-1">
+                {errors.Name.message}
+              </p>
+            )}
+            {watchedFields.Name && !errors.Name && (
+              <p className="text-green-500 text-xs italic mt-1">✓ Looks good!</p>
+            )}
+          </div>
+
+          {/* Email Field */}
+          <div className="mb-6">
+            <label
+              htmlFor="Email"
+              className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+            >
+              Email Address *
+            </label>
+            <input
+              {...register("Email")}
+              type="email"
+              id="Email"
+              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
+                errors.Email
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-gray-300 focus:border-blue-500"
+              }`}
+              placeholder="Enter your email address"
+            />
+            {errors.Email && (
+              <p className="text-red-500 text-xs italic mt-1">
+                {errors.Email.message}
+              </p>
+            )}
+            {watchedFields.Email && !errors.Email && (
+              <p className="text-green-500 text-xs italic mt-1">✓ Valid email!</p>
+            )}
+          </div>
+
+          {/* Contact Field */}
+          <div className="mb-6">
+            <label
+              htmlFor="Contact"
+              className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+            >
+              Contact Number *
+            </label>
+            <input
+              {...register("Contact")}
+              type="tel"
+              id="Contact"
+              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
+                errors.Contact
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-gray-300 focus:border-blue-500"
+              }`}
+              placeholder="Enter your contact number"
+            />
+            {errors.Contact && (
+              <p className="text-red-500 text-xs italic mt-1">
+                {errors.Contact.message}
+              </p>
+            )}
+            {watchedFields.Contact && !errors.Contact && (
+              <p className="text-green-500 text-xs italic mt-1">✓ Valid contact!</p>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex items-center justify-between">
+            <button
+              type="submit"
+              disabled={isLoading || isSubmitting || !isDirty || !isValid}
+              className={`font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-all duration-200 ${
+                isLoading || isSubmitting || !isDirty || !isValid
+                  ? "bg-gray-400 cursor-not-allowed text-gray-700"
+                  : "bg-blue-500 hover:bg-blue-700 text-white"
+              }`}
+            >
+              {isLoading || isSubmitting ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {id ? "Updating..." : "Adding..."}
+                </div>
+              ) : (
+                <>{id ? "Update User" : "Add User"}</>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-all duration-200"
+            >
+              Cancel
+            </button>
+          </div>
+
+          {/* Form Status */}
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            {!isDirty && (
+              <p>Please fill in the form to enable submission.</p>
+            )}
+            {isDirty && !isValid && (
+              <p className="text-red-500">Please fix the errors above.</p>
+            )}
+            {isDirty && isValid && (
+              <p className="text-green-500">Form is ready to submit!</p>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

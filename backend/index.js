@@ -2,10 +2,12 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import dotenv from "dotenv";
+import helmet from "helmet";
 
 import connectDB from "./config/database.js";
 import userRoutes from "./userRoutes/users.js";
 import { getDatabaseStatus } from "./config/database.js";
+import { generalRateLimit, errorHandler, requestLogger } from "./middleware/validation.js";
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +17,13 @@ const port = process.env.PORT || 5000;
 
 // Connect to MongoDB
 connectDB();
+
+// Security middleware
+app.use(helmet());
+app.use(generalRateLimit);
+
+// Request logging
+app.use(requestLogger);
 
 // Middleware
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -54,14 +63,7 @@ app.use("*", (req, res) => {
 });
 
 // Global error handler
-app.use((error, req, res, next) => {
-  console.error('Global error handler:', error);
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-    error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-  });
-});
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`🚀 Server is running on port ${port}`);

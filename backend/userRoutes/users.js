@@ -9,13 +9,20 @@ import {
   getUserStats,
 } from "../controllers/user.js";
 
+import {
+  validateUser,
+  validateUserUpdate,
+  handleValidationErrors,
+  createUserRateLimit
+} from "../middleware/validation.js";
+
 const router = express.Router();
 
-// User CRUD routes
+// User CRUD routes with validation
 router.get("/users", getUsers);
-router.post("/user", createUser);
+router.post("/user", createUserRateLimit, validateUser, handleValidationErrors, createUser);
 router.get("/user/:id", singleUser);
-router.put("/user/:id", updateUser);
+router.put("/user/:id", validateUserUpdate, handleValidationErrors, updateUser);
 router.delete("/user/:id", deleteUser);
 
 // Additional routes for future features (Issue #3)
