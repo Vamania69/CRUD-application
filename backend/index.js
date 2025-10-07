@@ -1,30 +1,72 @@
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
+import dotenv from "dotenv";
 
+import connectDB from "./config/database.js";
 import userRoutes from "./userRoutes/users.js";
+import { getDatabaseStatus } from "./config/database.js";
+
+// Load environment variables
+dotenv.config();
+
 const app = express();
-const port = 5000;
-app.use(bodyParser.json());
+const port = process.env.PORT || 5000;
+
+// Connect to MongoDB
+connectDB();
+
+// Middleware
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors());
 
-app.get("/", (req, res) => res.send("message in response"));
+// Health check endpoints
+app.get("/", (req, res) => {
+  res.json({
+    message: "CRUD Application API",
+    status: "running",
+    timestamp: new Date().toISOString(),
+    version: "1.0.0"
+  });
+});
 
-app.listen(port, () =>
-  console.log(`server is listeninng on port : https://localhost:${port}`)
-);
+app.get("/health", (req, res) => {
+  const dbStatus = getDatabaseStatus();
+  res.json({
+    status: "OK",
+    database: dbStatus,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
 
-//to use the routes set in router file we use/import it and the can goo to that route
+// API Routes
+app.use("/api", userRoutes);
 
-app.get("/users", userRoutes);
+// 404 handler
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+    path: req.originalUrl
+  });
+});
 
-app.post("/user", userRoutes);
+// Global error handler
+app.use((error, req, res, next) => {
+  console.error('Global error handler:', error);
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
+    error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
+});
 
-app.get("/user/:id", userRoutes);
+app.listen(port, () => {
+  console.log(`🚀 Server is running on port ${port}`);
+  console.log(`📍 Health check: http://localhost:${port}/health`);
+  console.log(`📍 API base: http://localhost:${port}/api`);
+});
 
-app.delete("/user/:id", userRoutes);
-
-app.put("/user/:id", userRoutes);
-
-// export express
-export default express;
+export default app;

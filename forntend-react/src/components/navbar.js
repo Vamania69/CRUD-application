@@ -12,7 +12,7 @@ function Navbar() {
         } else if (location.pathname === "/viewUser") {
             setActivateTab("ViewUser");
         }
-    });
+    }, [location.pathname]);
 
     return (
         <div>

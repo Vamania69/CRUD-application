@@ -5,8 +5,6 @@ import Home from "../src/pages/home";
 import Navbar from "./components/navbar";
 import AddUser from "../src/pages/addUser";
 import ViewUser from "../src/pages/viewUser";
-
-import EditUser from "../src/pages/editUser";
 // import ViewUser from "../src/pages/viewUser";
 // import {}
 function App() {

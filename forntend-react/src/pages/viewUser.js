@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import React, { useEffect, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 
 import axios from "axios";
 
@@ -7,19 +7,25 @@ function ViewUser() {
   const { id } = useParams();
   const [data, setData] = useState([]);
 
+  //we define the api call getuser to get the user data
+  const getUser = useCallback(async () => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/user/${id}`);
+      if (response.status === 200 && response.data.success) {
+        console.log(response);
+        setData(response.data.data);
+      } else {
+        console.log("There is some issue in fetching the data");
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
+  }, [id]);
+
   useEffect(() => {
     //to get all the user we run the fuction
     getUser();
-  }, []);
-
-  //we define the api call getuser to get the user data
-  const getUser = async () => {
-    const response = await axios.get(`http://localhost:5000/user/${id}`);
-    if (response.status === 200) {
-      console.log(response);
-      setData(response.data[0]);
-    } else console.log("There is some issue in fething the data");
-  };
+  }, [getUser]);
 
   return (
     <div>
